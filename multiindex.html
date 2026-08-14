@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiStream</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --border: #222;
+    --accent: #7c3aed;
+    --accent2: #a78bfa;
+    --text: #e5e5e5;
+    --muted: #666;
+    --twitch: #9146ff;
+    --kick: #53fc18;
+    --youtube: #ff0000;
+    --tiktok: #ff0050;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    height: 44px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  #topbar::-webkit-scrollbar { height: 3px; }
+  #topbar::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .logo {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+    color: var(--accent2);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-right: 4px;
+  }
+
+  .stream-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px 3px 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 13px;
+  }
+
+  .stream-pill .platform-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .stream-pill .remove-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 0 0 4px;
+    transition: color 0.15s;
+  }
+  .stream-pill .remove-btn:hover { color: #ff4444; }
+
+  #add-btn {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  #add-btn:hover { background: #6d28d9; }
+
+  #layout-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: border-color 0.15s;
+  }
+  #layout-btn:hover { border-color: var(--accent); }
+
+  /* ── GRID ── */
+  #grid {
+    display: grid;
+    height: calc(100vh - 44px);
+    gap: 2px;
+    background: #000;
+  }
+
+  .stream-cell {
+    position: relative;
+    background: #000;
+    overflow: hidden;
+  }
+
+  .stream-cell iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
+  .cell-label {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: rgba(0,0,0,0.7);
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .stream-cell:hover .cell-label { opacity: 1; }
+
+  /* ── MODAL ── */
+  #modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #modal-overlay.open { display: flex; }
+
+  #modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    width: 360px;
+    max-width: 95vw;
+  }
+
+  #modal h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  #modal p {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  #modal .platform-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .ptab {
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .ptab.active { color: #fff; border-color: transparent; }
+  .ptab[data-p="twitch"].active  { background: var(--twitch); }
+  .ptab[data-p="kick"].active    { background: #2a8f0c; color: #000; }
+  .ptab[data-p="youtube"].active { background: var(--youtube); }
+  .ptab[data-p="tiktok"].active  { background: var(--tiktok); }
+
+  #stream-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 9px 12px;
+    font-size: 14px;
+    margin-bottom: 6px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #stream-input:focus { border-color: var(--accent); }
+
+  #input-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    min-height: 16px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .btn-cancel {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 4px;
+    padding: 7px 16px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .btn-cancel:hover { color: var(--text); }
+
+  .btn-add {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-add:hover { background: #6d28d9; }
+
+  /* ── EMPTY STATE ── */
+  #empty {
+    position: fixed;
+    inset: 44px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    pointer-events: none;
+  }
+
+  #empty h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  #empty p {
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+    max-width: 280px;
+    line-height: 1.5;
+  }
+
+  .platform-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge.twitch  { background: var(--twitch); color: #fff; }
+  .badge.kick    { background: var(--kick); color: #000; }
+  .badge.youtube { background: var(--youtube); color: #fff; }
+  .badge.tiktok  { background: var(--tiktok); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <span class="logo">◈ MultiStream</span>
+  <div id="pill-container"></div>
+  <button id="add-btn" onclick="openModal()">+ Add Stream</button>
+  <button id="layout-btn" onclick="cycleLayout()">Layout: Auto</button>
+</div>
+
+<!-- STREAM GRID -->
+<div id="grid"></div>
+
+<!-- EMPTY STATE -->
+<div id="empty">
+  <h1>MultiStream</h1>
+  <p>Watch multiple streams at once — add any streamer to get started.</p>
+  <div class="platform-badges">
+    <span class="badge twitch">Twitch</span>
+    <span class="badge kick">Kick</span>
+    <span class="badge youtube">YouTube</span>
+    <span class="badge tiktok">TikTok</span>
+  </div>
+</div>
+
+<!-- ADD STREAM MODAL -->
+<div id="modal-overlay" onclick="closeModalOutside(event)">
+  <div id="modal">
+    <h2>Add a Stream</h2>
+    <p>Pick a platform and enter the streamer's username or video URL.</p>
+    <div class="platform-tabs">
+      <button class="ptab active" data-p="twitch"  onclick="selectPlatform('twitch')">Twitch</button>
+      <button class="ptab"        data-p="kick"    onclick="selectPlatform('kick')">Kick</button>
+      <button class="ptab"        data-p="youtube" onclick="selectPlatform('youtube')">YouTube</button>
+      <button class="ptab"        data-p="tiktok"  onclick="selectPlatform('tiktok')">TikTok</button>
+    </div>
+    <input id="stream-input" type="text" placeholder="username" autocomplete="off" autocorrect="off"
+           onkeydown="if(event.key==='Enter') addStream()" oninput="updateHint()">
+    <div id="input-hint">Enter a Twitch username, e.g. ninja</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-add"    onclick="addStream()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let streams = [];           // [{platform, id, label}]
+let layoutMode = 'auto';    // 'auto' | '1' | '2h' | '2v' | '3' | '4'
+let selectedPlatform = 'twitch';
+
+const PLATFORM_COLORS = {
+  twitch:  '#9146ff',
+  kick:    '#53fc18',
+  youtube: '#ff0000',
+  tiktok:  '#ff0050',
+};
+
+const HINTS = {
+  twitch:  'Enter a Twitch username, e.g. ninja',
+  kick:    'Enter a Kick username, e.g. xqc',
+  youtube: 'Enter a YouTube channel handle, e.g. @mrbeast — or a video ID',
+  tiktok:  'Enter a TikTok username, e.g. charlidamelio',
+};
+
+// ── PLATFORM: build embed URL ──
+function getEmbedUrl(platform, id) {
+  const host = location.hostname || 'localhost';
+  switch (platform) {
+    case 'twitch':
+      return `https://player.twitch.tv/?channel=${encodeURIComponent(id)}&parent=${host}&autoplay=true&muted=false`;
+    case 'kick':
+      return `https://player.kick.com/${encodeURIComponent(id)}?autoplay=true`;
+    case 'youtube':
+      // Accept full URLs, video IDs, or channel handles
+      let ytId = id.trim();
+      // Full watch URL
+      let m = ytId.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+      if (m) ytId = m[1];
+      // youtu.be
+      m = ytId.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+      if (m) ytId = m[1];
+      // If 11-char video ID
+      if (/^[a-zA-Z0-9_-]{11}$/.test(ytId)) {
+        return `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=0`;
+      }
+      // Channel / handle: use live embed
+      ytId = ytId.replace(/^@/, '');
+      return `https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(ytId)}&autoplay=1`;
+    case 'tiktok':
+      // TikTok live embed — username only
+      let tt = id.replace(/^@/, '');
+      return `https://www.tiktok.com/live/embed?uniqueId=${encodeURIComponent(tt)}`;
+  }
+}
+
+function getPlatformLabel(platform) {
+  return { twitch: 'Twitch', kick: 'Kick', youtube: 'YouTube', tiktok: 'TikTok' }[platform];
+}
+
+// ── ADD / REMOVE ──
+function addStream() {
+  const raw = document.getElementById('stream-input').value.trim();
+  if (!raw) return;
+
+  // Allow pasting full URLs and extract the useful bit for label
+  let id = raw;
+  let label = raw;
+
+  // Twitch URL
+  let m = raw.match(/twitch\.tv\/([^/?#]+)/);
+  if (m && selectedPlatform === 'twitch') { id = m[1]; label = m[1]; }
+  // Kick URL
+  m = raw.match(/kick\.com\/([^/?#]+)/);
+  if (m && selectedPlatform === 'kick') { id = m[1]; label = m[1]; }
+
+  const stream = { platform: selectedPlatform, id, label };
+  streams.push(stream);
+  render();
+  closeModal();
+  document.getElementById('stream-input').value = '';
+}
+
+function removeStream(i) {
+  streams.splice(i, 1);
+  render();
+}
+
+// ── LAYOUT ──
+const LAYOUTS = ['auto', '1', '2h', '2v', '3', '4'];
+let layoutIdx = 0;
+
+function cycleLayout() {
+  layoutIdx = (layoutIdx + 1) % LAYOUTS.length;
+  layoutMode = LAYOUTS[layoutIdx];
+  const labels = { auto: 'Auto', '1': '1-up', '2h': '2 side-by-side', '2v': '2 stacked', '3': '3-up', '4': '4-up' };
+  document.getElementById('layout-btn').textContent = `Layout: ${labels[layoutMode]}`;
+  render();
+}
+
+function getGridCSS(n) {
+  if (layoutMode !== 'auto') {
+    switch (layoutMode) {
+      case '1':  return { cols: '1fr',       rows: '1fr' };
+      case '2h': return { cols: '1fr 1fr',   rows: '1fr' };
+      case '2v': return { cols: '1fr',       rows: '1fr 1fr' };
+      case '3':  return { cols: '1fr 1fr',   rows: '1fr 1fr' };
+      case '4':  return { cols: '1fr 1fr',   rows: '1fr 1fr' };
+    }
+  }
+  // Auto layout
+  if (n === 0) return { cols: '1fr', rows: '1fr' };
+  if (n === 1) return { cols: '1fr', rows: '1fr' };
+  if (n === 2) return { cols: '1fr 1fr', rows: '1fr' };
+  if (n === 3) return { cols: '1fr 1fr', rows: '1fr 1fr' };
+  if (n === 4) return { cols: '1fr 1fr', rows: '1fr 1fr' };
+  if (n <= 6)  return { cols: 'repeat(3, 1fr)', rows: '1fr 1fr' };
+  return       { cols: 'repeat(3, 1fr)', rows: 'repeat(3, 1fr)' };
+}
+
+// ── RENDER ──
+function render() {
+  const grid = document.getElementById('grid');
+  const pillContainer = document.getElementById('pill-container');
+  const empty = document.getElementById('empty');
+
+  empty.style.display = streams.length === 0 ? 'flex' : 'none';
+
+  // Pills
+  pillContainer.innerHTML = streams.map((s, i) => `
+    <div class="stream-pill">
+      <div class="platform-dot" style="background:${PLATFORM_COLORS[s.platform]}"></div>
+      <span>${s.label}</span>
+      <button class="remove-btn" onclick="removeStream(${i})" title="Remove">✕</button>
+    </div>
+  `).join('');
+
+  // Grid layout
+  const css = getGridCSS(streams.length);
+  grid.style.gridTemplateColumns = css.cols;
+  grid.style.gridTemplateRows = css.rows;
+
+  // Only rebuild cells that changed (by data-key)
+  const existing = {};
+  grid.querySelectorAll('.stream-cell').forEach(el => {
+    existing[el.dataset.key] = el;
+  });
+
+  const newKeys = streams.map((s, i) => `${s.platform}:${s.id}:${i}`);
+
+  // Remove stale
+  Object.keys(existing).forEach(k => {
+    if (!newKeys.includes(k)) existing[k].remove();
+  });
+
+  // Insert/update in order
+  newKeys.forEach((key, i) => {
+    const s = streams[i];
+    if (existing[key]) {
+      // already exists, just reorder
+      grid.appendChild(existing[key]);
+    } else {
+      const cell = document.createElement('div');
+      cell.className = 'stream-cell';
+      cell.dataset.key = key;
+      cell.innerHTML = `
+        <iframe src="${getEmbedUrl(s.platform, s.id)}"
+          allowfullscreen allow="autoplay; fullscreen; picture-in-picture"
+          loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+        <div class="cell-label">
+          <div class="platform-dot" style="width:7px;height:7px;border-radius:50%;background:${PLATFORM_COLORS[s.platform]}"></div>
+          <span>${getPlatformLabel(s.platform)}</span>
+          <strong>${s.label}</strong>
+        </div>
+      `;
+      grid.appendChild(cell);
+    }
+  });
+}
+
+// ── MODAL ──
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('stream-input').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function selectPlatform(p) {
+  selectedPlatform = p;
+  document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.ptab[data-p="${p}"]`).classList.add('active');
+  document.getElementById('stream-input').placeholder =
+    p === 'youtube' ? 'username or video ID' : 'username';
+  updateHint();
+}
+
+function updateHint() {
+  document.getElementById('input-hint').textContent = HINTS[selectedPlatform];
+}
+
+// Keyboard shortcut: Escape to close
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// Init
+render();
+</script>
+</body>
+</html>
