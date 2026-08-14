@@ -5,309 +5,345 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MultiStream</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg: #0a0a0a;
-    --surface: #141414;
-    --border: #222;
-    --accent: #7c3aed;
-    --accent2: #a78bfa;
-    --text: #e5e5e5;
-    --muted: #666;
-    --twitch: #9146ff;
-    --kick: #53fc18;
-    --youtube: #ff0000;
-    --tiktok: #ff0050;
-  }
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface2: #1c1c1c;
+  --border: #242424;
+  --accent: #7c3aed;
+  --accent2: #a78bfa;
+  --text: #e5e5e5;
+  --muted: #555;
+  --twitch: #9146ff;
+  --kick: #53fc18;
+  --youtube: #ff0000;
+  --tiktok: #ff0050;
+  --fav-panel: 240px;
+}
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 14px;
-    overflow: hidden;
-  }
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+}
 
-  /* ── TOP BAR ── */
-  #topbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0 12px;
-    height: 44px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
+/* ══ TOP BAR ══ */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  height: 44px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+  z-index: 10;
+}
+#topbar::-webkit-scrollbar { height: 3px; }
+#topbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  #topbar::-webkit-scrollbar { height: 3px; }
-  #topbar::-webkit-scrollbar-thumb { background: var(--border); }
+.logo {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.5px;
+  color: var(--accent2);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
 
-  .logo {
-    font-weight: 700;
-    font-size: 15px;
-    letter-spacing: -0.3px;
-    color: var(--accent2);
-    white-space: nowrap;
-    flex-shrink: 0;
-    margin-right: 4px;
-  }
+#pill-container { display: flex; gap: 6px; align-items: center; }
 
-  .stream-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 3px 8px 3px 6px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    font-size: 13px;
-  }
+.stream-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 7px 3px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.stream-pill .pdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.stream-pill .prm {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 13px; line-height: 1; padding: 0 0 0 3px;
+  transition: color .15s;
+}
+.stream-pill .prm:hover { color: #ff4444; }
 
-  .stream-pill .platform-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
+.tb-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color .15s, background .15s;
+}
+.tb-btn:hover { border-color: var(--accent); }
+.tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tb-btn.primary:hover { background: #6d28d9; border-color: #6d28d9; }
+.tb-btn.fav-toggle { gap: 5px; display: flex; align-items: center; }
+.tb-btn.fav-toggle.active { border-color: #f59e0b; color: #f59e0b; }
 
-  .stream-pill .remove-btn {
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-    padding: 0 0 0 4px;
-    transition: color 0.15s;
-  }
-  .stream-pill .remove-btn:hover { color: #ff4444; }
+/* ══ BODY LAYOUT ══ */
+#body {
+  display: flex;
+  height: calc(100vh - 44px);
+}
 
-  #add-btn {
-    background: var(--accent);
-    border: none;
-    color: #fff;
-    border-radius: 4px;
-    padding: 5px 12px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: background 0.15s;
-  }
-  #add-btn:hover { background: #6d28d9; }
+/* ══ FAV PANEL ══ */
+#fav-panel {
+  width: var(--fav-panel);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width .2s ease, opacity .2s;
+}
+#fav-panel.hidden { width: 0; opacity: 0; pointer-events: none; }
 
-  #layout-btn {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 13px;
-    cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: border-color 0.15s;
-  }
-  #layout-btn:hover { border-color: var(--accent); }
+.fav-header {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.fav-header h3 { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
 
-  /* ── GRID ── */
-  #grid {
-    display: grid;
-    height: calc(100vh - 44px);
-    gap: 2px;
-    background: #000;
-  }
+.fav-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px 0;
+}
+.fav-list::-webkit-scrollbar { width: 4px; }
+.fav-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  .stream-cell {
-    position: relative;
-    background: #000;
-    overflow: hidden;
-  }
+.fav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background .1s;
+  position: relative;
+}
+.fav-item:hover { background: var(--surface2); }
+.fav-item .pdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.fav-item .fav-name { font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav-item .fav-platform { font-size: 10px; color: var(--muted); }
+.fav-item .fav-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.fav-item:hover .fav-actions { opacity: 1; }
+.fav-item .fav-play {
+  background: var(--accent); border: none; color: #fff;
+  border-radius: 3px; padding: 2px 7px; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.fav-item .fav-del {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 13px; padding: 0 2px; transition: color .15s;
+}
+.fav-item .fav-del:hover { color: #ff4444; }
 
-  .stream-cell iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    display: block;
-  }
+.fav-empty {
+  padding: 20px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.6;
+}
 
-  .cell-label {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    background: rgba(0,0,0,0.7);
-    border-radius: 3px;
-    padding: 2px 7px;
-    font-size: 11px;
-    font-weight: 600;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
+/* group labels */
+.fav-group-label {
+  padding: 8px 12px 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
 
-  .stream-cell:hover .cell-label { opacity: 1; }
+/* ══ GRID ══ */
+#grid {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  background: #000;
+  min-width: 0;
+}
 
-  /* ── MODAL ── */
-  #modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
-  }
-  #modal-overlay.open { display: flex; }
+.stream-cell {
+  position: relative;
+  background: #0a0a0a;
+  overflow: hidden;
+}
+.stream-cell iframe {
+  width: 100%; height: 100%; border: none; display: block;
+}
 
-  #modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
-    width: 360px;
-    max-width: 95vw;
-  }
+/* cell overlay — shows on hover */
+.cell-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.stream-cell:hover .cell-overlay { opacity: 1; }
 
-  #modal h2 {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
+.cell-label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(4px);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
 
-  #modal p {
-    color: var(--muted);
-    font-size: 12px;
-    margin-bottom: 16px;
-    line-height: 1.5;
-  }
+.cell-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 5px;
+  pointer-events: all;
+}
+.cell-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s, background .15s;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(4px);
+}
+.cell-btn:hover { transform: scale(1.12); }
+.cell-btn.close-btn { color: #fff; }
+.cell-btn.close-btn:hover { background: #cc2222; }
+.cell-btn.heart-btn { color: #888; }
+.cell-btn.heart-btn.faved { color: #f87171; }
+.cell-btn.heart-btn:hover { background: rgba(248,113,113,0.25); color: #f87171; }
 
-  #modal .platform-tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-  }
+/* ══ MODAL ══ */
+#modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+#modal-overlay.open { display: flex; }
 
-  .ptab {
-    padding: 5px 12px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.15s;
-  }
-  .ptab.active { color: #fff; border-color: transparent; }
-  .ptab[data-p="twitch"].active  { background: var(--twitch); }
-  .ptab[data-p="kick"].active    { background: #2a8f0c; color: #000; }
-  .ptab[data-p="youtube"].active { background: var(--youtube); }
-  .ptab[data-p="tiktok"].active  { background: var(--tiktok); }
+#modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px 24px 20px;
+  width: 370px;
+  max-width: 96vw;
+}
+#modal h2 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+#modal .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; line-height: 1.5; }
 
-  #stream-input {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 4px;
-    padding: 9px 12px;
-    font-size: 14px;
-    margin-bottom: 6px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  #stream-input:focus { border-color: var(--accent); }
+.platform-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.ptab {
+  padding: 5px 12px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--muted);
+  cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s;
+}
+.ptab.active { color: #fff; border-color: transparent; }
+.ptab[data-p="twitch"].active  { background: var(--twitch); }
+.ptab[data-p="kick"].active    { background: #29880c; }
+.ptab[data-p="youtube"].active { background: var(--youtube); }
+.ptab[data-p="tiktok"].active  { background: var(--tiktok); }
 
-  #input-hint {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 16px;
-    min-height: 16px;
-  }
+/* input + dropdown wrapper */
+.input-wrap { position: relative; margin-bottom: 6px; }
+#stream-input {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); border-radius: 4px; padding: 9px 12px;
+  font-size: 14px; outline: none; transition: border-color .15s;
+}
+#stream-input:focus { border-color: var(--accent); }
 
-  .modal-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
+/* autocomplete dropdown */
+#autocomplete {
+  display: none;
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 5px 5px;
+  z-index: 300;
+  max-height: 160px;
+  overflow-y: auto;
+}
+#autocomplete.show { display: block; }
+#autocomplete::-webkit-scrollbar { width: 4px; }
+#autocomplete::-webkit-scrollbar-thumb { background: var(--border); }
+.ac-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; cursor: pointer; font-size: 13px;
+  transition: background .1s;
+}
+.ac-item:hover, .ac-item.selected { background: var(--accent); color: #fff; }
+.ac-item:hover .ac-plat, .ac-item.selected .ac-plat { color: rgba(255,255,255,.6); }
+.ac-plat { font-size: 10px; color: var(--muted); margin-left: auto; }
 
-  .btn-cancel {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    border-radius: 4px;
-    padding: 7px 16px;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  .btn-cancel:hover { color: var(--text); }
+#input-hint { font-size: 11px; color: var(--muted); margin-bottom: 14px; min-height: 15px; }
 
-  .btn-add {
-    background: var(--accent);
-    border: none;
-    color: #fff;
-    border-radius: 4px;
-    padding: 7px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  .btn-add:hover { background: #6d28d9; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-cancel {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 4px; padding: 7px 15px; font-size: 13px; cursor: pointer;
+}
+.btn-cancel:hover { color: var(--text); }
+.btn-add {
+  background: var(--accent); border: none; color: #fff;
+  border-radius: 4px; padding: 7px 15px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+}
+.btn-add:hover { background: #6d28d9; }
 
-  /* ── EMPTY STATE ── */
-  #empty {
-    position: fixed;
-    inset: 44px 0 0 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    pointer-events: none;
-  }
-
-  #empty h1 {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  #empty p {
-    color: var(--muted);
-    font-size: 14px;
-    text-align: center;
-    max-width: 280px;
-    line-height: 1.5;
-  }
-
-  .platform-badges {
-    display: flex;
-    gap: 8px;
-    margin-top: 4px;
-  }
-
-  .badge {
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .badge.twitch  { background: var(--twitch); color: #fff; }
-  .badge.kick    { background: var(--kick); color: #000; }
-  .badge.youtube { background: var(--youtube); color: #fff; }
-  .badge.tiktok  { background: var(--tiktok); color: #fff; }
+/* ══ EMPTY ══ */
+#empty {
+  position: fixed; inset: 44px 0 0 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; pointer-events: none;
+}
+#empty h1 { font-size: 22px; font-weight: 800; color: var(--text); }
+#empty p { color: var(--muted); font-size: 13px; text-align: center; max-width: 260px; line-height: 1.6; }
+.pbadges { display: flex; gap: 7px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+.badge { padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+.badge.twitch  { background: var(--twitch); color: #fff; }
+.badge.kick    { background: var(--kick); color: #000; }
+.badge.youtube { background: var(--youtube); color: #fff; }
+.badge.tiktok  { background: var(--tiktok); color: #fff; }
 </style>
 </head>
 <body>
@@ -316,18 +352,29 @@
 <div id="topbar">
   <span class="logo">◈ MultiStream</span>
   <div id="pill-container"></div>
-  <button id="add-btn" onclick="openModal()">+ Add Stream</button>
-  <button id="layout-btn" onclick="cycleLayout()">Layout: Auto</button>
+  <button class="tb-btn primary" onclick="openModal()">+ Add Stream</button>
+  <button class="tb-btn fav-toggle" id="fav-toggle-btn" onclick="toggleFavPanel()">⭐ Favorites</button>
+  <button class="tb-btn" id="layout-btn" onclick="cycleLayout()">Layout: Auto</button>
 </div>
 
-<!-- STREAM GRID -->
-<div id="grid"></div>
+<!-- BODY -->
+<div id="body">
+
+  <!-- FAVORITES PANEL -->
+  <div id="fav-panel" class="hidden">
+    <div class="fav-header"><h3>⭐ Favorites</h3></div>
+    <div class="fav-list" id="fav-list"></div>
+  </div>
+
+  <!-- STREAM GRID -->
+  <div id="grid"></div>
+</div>
 
 <!-- EMPTY STATE -->
 <div id="empty">
   <h1>MultiStream</h1>
-  <p>Watch multiple streams at once — add any streamer to get started.</p>
-  <div class="platform-badges">
+  <p>Watch Twitch, Kick, YouTube &amp; TikTok side by side. Add a stream to start.</p>
+  <div class="pbadges">
     <span class="badge twitch">Twitch</span>
     <span class="badge kick">Kick</span>
     <span class="badge youtube">YouTube</span>
@@ -339,15 +386,17 @@
 <div id="modal-overlay" onclick="closeModalOutside(event)">
   <div id="modal">
     <h2>Add a Stream</h2>
-    <p>Pick a platform and enter the streamer's username or video URL.</p>
+    <p class="sub">Pick a platform, then type a username or paste a URL.</p>
     <div class="platform-tabs">
       <button class="ptab active" data-p="twitch"  onclick="selectPlatform('twitch')">Twitch</button>
       <button class="ptab"        data-p="kick"    onclick="selectPlatform('kick')">Kick</button>
       <button class="ptab"        data-p="youtube" onclick="selectPlatform('youtube')">YouTube</button>
       <button class="ptab"        data-p="tiktok"  onclick="selectPlatform('tiktok')">TikTok</button>
     </div>
-    <input id="stream-input" type="text" placeholder="username" autocomplete="off" autocorrect="off"
-           onkeydown="if(event.key==='Enter') addStream()" oninput="updateHint()">
+    <div class="input-wrap">
+      <input id="stream-input" type="text" placeholder="username" autocomplete="off" autocorrect="off" spellcheck="false">
+      <div id="autocomplete"></div>
+    </div>
     <div id="input-hint">Enter a Twitch username, e.g. ninja</div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -357,80 +406,123 @@
 </div>
 
 <script>
-// ── STATE ──
-let streams = [];           // [{platform, id, label}]
-let layoutMode = 'auto';    // 'auto' | '1' | '2h' | '2v' | '3' | '4'
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let streams   = [];   // [{platform, id, label}]  — active on screen
+let favorites = [];   // [{platform, id, label}]  — saved list
+let history   = [];   // [{platform, id, label}]  — ever-added, for autocomplete
+let favPanelOpen = false;
 let selectedPlatform = 'twitch';
+let acSelectedIdx = -1;
 
-const PLATFORM_COLORS = {
-  twitch:  '#9146ff',
-  kick:    '#53fc18',
-  youtube: '#ff0000',
-  tiktok:  '#ff0050',
-};
-
-const HINTS = {
+const PCOLORS = { twitch:'#9146ff', kick:'#53fc18', youtube:'#ff0000', tiktok:'#ff0050' };
+const PLABELS = { twitch:'Twitch', kick:'Kick', youtube:'YouTube', tiktok:'TikTok' };
+const HINTS   = {
   twitch:  'Enter a Twitch username, e.g. ninja',
   kick:    'Enter a Kick username, e.g. xqc',
-  youtube: 'Enter a YouTube channel handle, e.g. @mrbeast — or a video ID',
+  youtube: 'Channel handle, e.g. @mrbeast — or a YouTube video ID',
   tiktok:  'Enter a TikTok username, e.g. charlidamelio',
 };
 
-// ── PLATFORM: build embed URL ──
+// ══════════════════════════════════════════════
+//  PERSIST
+// ══════════════════════════════════════════════
+function save() {
+  try {
+    localStorage.setItem('ms_favorites', JSON.stringify(favorites));
+    localStorage.setItem('ms_history',   JSON.stringify(history.slice(0, 60)));
+  } catch(e) {}
+}
+function load() {
+  try {
+    favorites = JSON.parse(localStorage.getItem('ms_favorites') || '[]');
+    history   = JSON.parse(localStorage.getItem('ms_history')   || '[]');
+  } catch(e) { favorites = []; history = []; }
+}
+
+// ══════════════════════════════════════════════
+//  EMBED URL
+// ══════════════════════════════════════════════
 function getEmbedUrl(platform, id) {
   const host = location.hostname || 'localhost';
   switch (platform) {
     case 'twitch':
-      return `https://player.twitch.tv/?channel=${encodeURIComponent(id)}&parent=${host}&autoplay=true&muted=false`;
+      return `https://player.twitch.tv/?channel=${encodeURIComponent(id)}&parent=${host}&autoplay=true`;
     case 'kick':
       return `https://player.kick.com/${encodeURIComponent(id)}?autoplay=true`;
-    case 'youtube':
-      // Accept full URLs, video IDs, or channel handles
+    case 'youtube': {
       let ytId = id.trim();
-      // Full watch URL
       let m = ytId.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
       if (m) ytId = m[1];
-      // youtu.be
       m = ytId.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
       if (m) ytId = m[1];
-      // If 11-char video ID
-      if (/^[a-zA-Z0-9_-]{11}$/.test(ytId)) {
-        return `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=0`;
-      }
-      // Channel / handle: use live embed
+      if (/^[a-zA-Z0-9_-]{11}$/.test(ytId))
+        return `https://www.youtube.com/embed/${ytId}?autoplay=1`;
       ytId = ytId.replace(/^@/, '');
       return `https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(ytId)}&autoplay=1`;
-    case 'tiktok':
-      // TikTok live embed — username only
-      let tt = id.replace(/^@/, '');
+    }
+    case 'tiktok': {
+      const tt = id.replace(/^@/, '');
       return `https://www.tiktok.com/live/embed?uniqueId=${encodeURIComponent(tt)}`;
+    }
   }
 }
 
-function getPlatformLabel(platform) {
-  return { twitch: 'Twitch', kick: 'Kick', youtube: 'YouTube', tiktok: 'TikTok' }[platform];
+// ══════════════════════════════════════════════
+//  STREAM ADD / REMOVE
+// ══════════════════════════════════════════════
+function parseInput(raw, platform) {
+  let id = raw.trim();
+  // Extract from full URLs
+  let m;
+  if (platform === 'twitch') {
+    m = id.match(/twitch\.tv\/([^/?#\s]+)/);
+    if (m) id = m[1];
+  } else if (platform === 'kick') {
+    m = id.match(/kick\.com\/([^/?#\s]+)/);
+    if (m) id = m[1];
+  } else if (platform === 'youtube') {
+    m = id.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (m) id = m[1];
+    else {
+      m = id.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+      if (m) id = m[1];
+    }
+  } else if (platform === 'tiktok') {
+    m = id.match(/tiktok\.com\/@([^/?#\s]+)/);
+    if (m) id = m[1];
+    id = id.replace(/^@/, '');
+  }
+  return id;
 }
 
-// ── ADD / REMOVE ──
-function addStream() {
-  const raw = document.getElementById('stream-input').value.trim();
-  if (!raw) return;
+function pushHistory(entry) {
+  // dedupe by platform+id
+  history = history.filter(h => !(h.platform === entry.platform && h.id === entry.id));
+  history.unshift(entry);
+  save();
+}
 
-  // Allow pasting full URLs and extract the useful bit for label
-  let id = raw;
-  let label = raw;
-
-  // Twitch URL
-  let m = raw.match(/twitch\.tv\/([^/?#]+)/);
-  if (m && selectedPlatform === 'twitch') { id = m[1]; label = m[1]; }
-  // Kick URL
-  m = raw.match(/kick\.com\/([^/?#]+)/);
-  if (m && selectedPlatform === 'kick') { id = m[1]; label = m[1]; }
-
-  const stream = { platform: selectedPlatform, id, label };
-  streams.push(stream);
+function addStream(platform, id, label) {
+  // Called from modal OR favorites
+  if (!platform) {
+    const raw = document.getElementById('stream-input').value.trim();
+    if (!raw) return;
+    id = parseInput(raw, selectedPlatform);
+    label = id;
+    platform = selectedPlatform;
+  }
+  // Avoid duplicates on screen
+  if (streams.find(s => s.platform === platform && s.id === id)) {
+    closeModal(); closeAC(); return;
+  }
+  const entry = { platform, id, label };
+  streams.push(entry);
+  pushHistory(entry);
   render();
   closeModal();
+  closeAC();
   document.getElementById('stream-input').value = '';
 }
 
@@ -439,14 +531,86 @@ function removeStream(i) {
   render();
 }
 
-// ── LAYOUT ──
-const LAYOUTS = ['auto', '1', '2h', '2v', '3', '4'];
+// ══════════════════════════════════════════════
+//  FAVORITES
+// ══════════════════════════════════════════════
+function isFav(platform, id) {
+  return favorites.some(f => f.platform === platform && f.id === id);
+}
+
+function toggleFav(platform, id, label) {
+  if (isFav(platform, id)) {
+    favorites = favorites.filter(f => !(f.platform === platform && f.id === id));
+  } else {
+    favorites.push({ platform, id, label });
+  }
+  save();
+  render();
+  renderFavPanel();
+}
+
+function removeFav(platform, id) {
+  favorites = favorites.filter(f => !(f.platform === platform && f.id === id));
+  save();
+  renderFavPanel();
+  render(); // refresh heart state
+}
+
+function toggleFavPanel() {
+  favPanelOpen = !favPanelOpen;
+  document.getElementById('fav-panel').classList.toggle('hidden', !favPanelOpen);
+  document.getElementById('fav-toggle-btn').classList.toggle('active', favPanelOpen);
+}
+
+function renderFavPanel() {
+  const list = document.getElementById('fav-list');
+  if (favorites.length === 0) {
+    list.innerHTML = '<div class="fav-empty">Heart a stream to save it here. Click a favorite to add it to your view.</div>';
+    return;
+  }
+
+  // Group by platform
+  const groups = {};
+  favorites.forEach(f => {
+    if (!groups[f.platform]) groups[f.platform] = [];
+    groups[f.platform].push(f);
+  });
+
+  let html = '';
+  ['twitch','kick','youtube','tiktok'].forEach(p => {
+    if (!groups[p]) return;
+    html += `<div class="fav-group-label">${PLABELS[p]}</div>`;
+    groups[p].forEach(f => {
+      const active = streams.some(s => s.platform === f.platform && s.id === f.id);
+      html += `
+        <div class="fav-item" onclick="addStream('${f.platform}','${f.id}','${f.label}')">
+          <div class="pdot" style="background:${PCOLORS[f.platform]}"></div>
+          <span class="fav-name">${escH(f.label)}</span>
+          <div class="fav-actions">
+            ${active ? '<span style="font-size:10px;color:var(--accent2);padding:0 4px">▶ live</span>' : `<button class="fav-play" onclick="event.stopPropagation();addStream('${f.platform}','${f.id}','${f.label}')">▶ Watch</button>`}
+            <button class="fav-del" onclick="event.stopPropagation();removeFav('${f.platform}','${f.id}')" title="Remove">✕</button>
+          </div>
+        </div>`;
+    });
+  });
+  list.innerHTML = html;
+}
+
+function escH(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════════
+//  LAYOUT
+// ══════════════════════════════════════════════
+const LAYOUTS = ['auto','1','2h','2v','3','4'];
 let layoutIdx = 0;
+let layoutMode = 'auto';
 
 function cycleLayout() {
   layoutIdx = (layoutIdx + 1) % LAYOUTS.length;
   layoutMode = LAYOUTS[layoutIdx];
-  const labels = { auto: 'Auto', '1': '1-up', '2h': '2 side-by-side', '2v': '2 stacked', '3': '3-up', '4': '4-up' };
+  const labels = { auto:'Auto', '1':'1-up', '2h':'Side by Side', '2v':'Stacked', '3':'3-up', '4':'4-up' };
   document.getElementById('layout-btn').textContent = `Layout: ${labels[layoutMode]}`;
   render();
 }
@@ -454,24 +618,24 @@ function cycleLayout() {
 function getGridCSS(n) {
   if (layoutMode !== 'auto') {
     switch (layoutMode) {
-      case '1':  return { cols: '1fr',       rows: '1fr' };
-      case '2h': return { cols: '1fr 1fr',   rows: '1fr' };
-      case '2v': return { cols: '1fr',       rows: '1fr 1fr' };
-      case '3':  return { cols: '1fr 1fr',   rows: '1fr 1fr' };
-      case '4':  return { cols: '1fr 1fr',   rows: '1fr 1fr' };
+      case '1':  return { cols:'1fr',            rows:'1fr' };
+      case '2h': return { cols:'1fr 1fr',        rows:'1fr' };
+      case '2v': return { cols:'1fr',            rows:'1fr 1fr' };
+      case '3':  return { cols:'1fr 1fr',        rows:'1fr 1fr' };
+      case '4':  return { cols:'1fr 1fr',        rows:'1fr 1fr' };
     }
   }
-  // Auto layout
-  if (n === 0) return { cols: '1fr', rows: '1fr' };
-  if (n === 1) return { cols: '1fr', rows: '1fr' };
-  if (n === 2) return { cols: '1fr 1fr', rows: '1fr' };
-  if (n === 3) return { cols: '1fr 1fr', rows: '1fr 1fr' };
-  if (n === 4) return { cols: '1fr 1fr', rows: '1fr 1fr' };
-  if (n <= 6)  return { cols: 'repeat(3, 1fr)', rows: '1fr 1fr' };
-  return       { cols: 'repeat(3, 1fr)', rows: 'repeat(3, 1fr)' };
+  if (n <= 1) return { cols:'1fr',               rows:'1fr' };
+  if (n === 2) return { cols:'1fr 1fr',          rows:'1fr' };
+  if (n === 3) return { cols:'1fr 1fr',          rows:'1fr 1fr' };
+  if (n === 4) return { cols:'1fr 1fr',          rows:'1fr 1fr' };
+  if (n <= 6)  return { cols:'repeat(3,1fr)',    rows:'1fr 1fr' };
+  return             { cols:'repeat(3,1fr)',      rows:'repeat(3,1fr)' };
 }
 
-// ── RENDER ──
+// ══════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════
 function render() {
   const grid = document.getElementById('grid');
   const pillContainer = document.getElementById('pill-container');
@@ -479,69 +643,79 @@ function render() {
 
   empty.style.display = streams.length === 0 ? 'flex' : 'none';
 
-  // Pills
+  // Pills in topbar
   pillContainer.innerHTML = streams.map((s, i) => `
     <div class="stream-pill">
-      <div class="platform-dot" style="background:${PLATFORM_COLORS[s.platform]}"></div>
-      <span>${s.label}</span>
-      <button class="remove-btn" onclick="removeStream(${i})" title="Remove">✕</button>
-    </div>
-  `).join('');
+      <div class="pdot" style="background:${PCOLORS[s.platform]}"></div>
+      <span>${escH(s.label)}</span>
+      <button class="prm" onclick="removeStream(${i})" title="Remove">✕</button>
+    </div>`).join('');
 
-  // Grid layout
+  // Grid
   const css = getGridCSS(streams.length);
   grid.style.gridTemplateColumns = css.cols;
-  grid.style.gridTemplateRows = css.rows;
+  grid.style.gridTemplateRows    = css.rows;
 
-  // Only rebuild cells that changed (by data-key)
+  // Smart diff — don't reload iframes that didn't change
   const existing = {};
-  grid.querySelectorAll('.stream-cell').forEach(el => {
-    existing[el.dataset.key] = el;
-  });
-
+  grid.querySelectorAll('.stream-cell').forEach(el => { existing[el.dataset.key] = el; });
   const newKeys = streams.map((s, i) => `${s.platform}:${s.id}:${i}`);
 
-  // Remove stale
-  Object.keys(existing).forEach(k => {
-    if (!newKeys.includes(k)) existing[k].remove();
-  });
+  Object.keys(existing).forEach(k => { if (!newKeys.includes(k)) existing[k].remove(); });
 
-  // Insert/update in order
   newKeys.forEach((key, i) => {
     const s = streams[i];
     if (existing[key]) {
-      // already exists, just reorder
+      // Update heart state without rebuilding
+      const hb = existing[key].querySelector('.heart-btn');
+      if (hb) {
+        hb.classList.toggle('faved', isFav(s.platform, s.id));
+        hb.title = isFav(s.platform, s.id) ? 'Remove from favorites' : 'Add to favorites';
+        hb.textContent = isFav(s.platform, s.id) ? '♥' : '♡';
+      }
       grid.appendChild(existing[key]);
     } else {
+      const faved = isFav(s.platform, s.id);
       const cell = document.createElement('div');
       cell.className = 'stream-cell';
       cell.dataset.key = key;
       cell.innerHTML = `
         <iframe src="${getEmbedUrl(s.platform, s.id)}"
           allowfullscreen allow="autoplay; fullscreen; picture-in-picture"
-          loading="lazy" referrerpolicy="no-referrer-when-downgrade">
-        </iframe>
-        <div class="cell-label">
-          <div class="platform-dot" style="width:7px;height:7px;border-radius:50%;background:${PLATFORM_COLORS[s.platform]}"></div>
-          <span>${getPlatformLabel(s.platform)}</span>
-          <strong>${s.label}</strong>
-        </div>
-      `;
+          loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <div class="cell-overlay">
+          <div class="cell-controls">
+            <button class="cell-btn heart-btn ${faved ? 'faved' : ''}"
+              onclick="toggleFav('${s.platform}','${s.id}','${s.label}')"
+              title="${faved ? 'Remove from favorites' : 'Add to favorites'}"
+            >${faved ? '♥' : '♡'}</button>
+            <button class="cell-btn close-btn"
+              onclick="removeStream(${i})"
+              title="Close stream">✕</button>
+          </div>
+          <div class="cell-label">
+            <div class="pdot" style="width:6px;height:6px;border-radius:50%;background:${PCOLORS[s.platform]}"></div>
+            <span>${escH(s.label)}</span>
+          </div>
+        </div>`;
       grid.appendChild(cell);
     }
   });
+
+  renderFavPanel();
 }
 
-// ── MODAL ──
+// ══════════════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════════════
 function openModal() {
   document.getElementById('modal-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('stream-input').focus(), 50);
+  setTimeout(() => document.getElementById('stream-input').focus(), 60);
 }
-
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
+  closeAC();
 }
-
 function closeModalOutside(e) {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
 }
@@ -550,21 +724,101 @@ function selectPlatform(p) {
   selectedPlatform = p;
   document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
   document.querySelector(`.ptab[data-p="${p}"]`).classList.add('active');
-  document.getElementById('stream-input').placeholder =
-    p === 'youtube' ? 'username or video ID' : 'username';
-  updateHint();
+  document.getElementById('stream-input').placeholder = p === 'youtube' ? 'username or video ID' : 'username';
+  document.getElementById('input-hint').textContent = HINTS[p];
+  buildAC(document.getElementById('stream-input').value);
 }
 
-function updateHint() {
-  document.getElementById('input-hint').textContent = HINTS[selectedPlatform];
+// ══════════════════════════════════════════════
+//  AUTOCOMPLETE
+// ══════════════════════════════════════════════
+function buildAC(query) {
+  const ac = document.getElementById('autocomplete');
+  // Combine history + favorites for suggestions, filtered by platform + query
+  const pool = [...history, ...favorites].filter(
+    (e, i, arr) => arr.findIndex(x => x.platform === e.platform && x.id === e.id) === i
+  );
+
+  const q = query.trim().toLowerCase();
+  const matches = pool.filter(e =>
+    e.platform === selectedPlatform &&
+    (q === '' || e.id.toLowerCase().includes(q) || e.label.toLowerCase().includes(q))
+  ).slice(0, 8);
+
+  if (matches.length === 0) { closeAC(); return; }
+
+  ac.innerHTML = matches.map((e, i) => `
+    <div class="ac-item" data-idx="${i}" data-platform="${e.platform}" data-id="${e.id}" data-label="${escH(e.label)}"
+         onmousedown="acSelect(event,${i})">
+      ${escH(e.label)}
+      <span class="ac-plat">${PLABELS[e.platform]}</span>
+    </div>`).join('');
+
+  acSelectedIdx = -1;
+  ac.classList.add('show');
 }
 
-// Keyboard shortcut: Escape to close
+function closeAC() {
+  document.getElementById('autocomplete').classList.remove('show');
+  acSelectedIdx = -1;
+}
+
+function acSelect(e, idx) {
+  e.preventDefault();
+  const item = document.getElementById('autocomplete').querySelector(`[data-idx="${idx}"]`);
+  if (!item) return;
+  document.getElementById('stream-input').value = item.dataset.label;
+  closeAC();
+}
+
+// keyboard nav in autocomplete
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('stream-input');
+
+  input.addEventListener('input', () => {
+    buildAC(input.value);
+  });
+
+  input.addEventListener('keydown', e => {
+    const ac = document.getElementById('autocomplete');
+    const items = ac.querySelectorAll('.ac-item');
+    if (!ac.classList.contains('show')) {
+      if (e.key === 'Enter') { addStream(); return; }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acSelectedIdx = Math.min(acSelectedIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('selected', i === acSelectedIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acSelectedIdx = Math.max(acSelectedIdx - 1, -1);
+      items.forEach((el, i) => el.classList.toggle('selected', i === acSelectedIdx));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (acSelectedIdx >= 0 && items[acSelectedIdx]) {
+        input.value = items[acSelectedIdx].dataset.label;
+        closeAC();
+      } else {
+        addStream();
+      }
+    } else if (e.key === 'Escape') {
+      closeAC();
+    }
+  });
+
+  input.addEventListener('focus', () => buildAC(input.value));
+  input.addEventListener('blur',  () => setTimeout(closeAC, 150));
+});
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
 
-// Init
+// ══════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════
+load();
 render();
 </script>
 </body>
