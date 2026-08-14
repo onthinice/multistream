@@ -188,64 +188,60 @@ html, body {
 }
 
 .stream-cell {
-  position: relative;
   background: #0a0a0a;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
+/* iframe fills everything below the bar — never obscured by controls */
 .stream-cell iframe {
-  width: 100%; height: 100%; border: none; display: block;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  display: block;
 }
 
-/* cell overlay — shows on hover */
-.cell-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .2s;
-}
-.stream-cell:hover .cell-overlay { opacity: 1; }
-
-.cell-label {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(0,0,0,0.72);
-  backdrop-filter: blur(4px);
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 600;
+/* slim always-visible bar above each iframe — keeps controls out of stream area */
+.cell-bar {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  padding: 0 5px;
+  background: #0f0f0f;
+  border-bottom: 1px solid #1c1c1c;
+  height: 26px;
+  flex-shrink: 0;
+  overflow: hidden;
+  min-width: 0;
 }
-
-.cell-controls {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 5px;
-  pointer-events: all;
+.cell-bar .bar-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.cell-bar .bar-name {
+  font-size: 11px; font-weight: 600; color: #aaa;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  min-width: 0;
 }
 .cell-btn {
-  width: 28px; height: 28px;
-  border-radius: 50%;
+  width: 22px; height: 22px;
+  border-radius: 4px;
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1;
   display: flex; align-items: center; justify-content: center;
-  transition: transform .15s, background .15s;
-  background: rgba(0,0,0,0.72);
-  backdrop-filter: blur(4px);
+  transition: background .12s;
+  background: transparent;
+  flex-shrink: 0;
+  padding: 0;
 }
-.cell-btn:hover { transform: scale(1.12); }
-.cell-btn.close-btn { color: #fff; }
-.cell-btn.close-btn:hover { background: #cc2222; }
-.cell-btn.heart-btn { color: #888; }
+.cell-btn:hover { background: rgba(255,255,255,0.09); }
+.cell-btn.close-btn { color: #666; }
+.cell-btn.close-btn:hover { background: rgba(200,30,30,0.75); color: #fff; }
+.cell-btn.heart-btn { color: #555; }
 .cell-btn.heart-btn.faved { color: #f87171; }
-.cell-btn.heart-btn:hover { background: rgba(248,113,113,0.25); color: #f87171; }
+.cell-btn.heart-btn:hover { color: #f87171; background: rgba(248,113,113,0.15); }
 
 /* ══ MODAL ══ */
 #modal-overlay {
@@ -680,47 +676,43 @@ function render() {
   grid.style.gridTemplateColumns = css.cols;
   grid.style.gridTemplateRows    = css.rows;
 
-  // Key cells by platform+id only — index is NOT part of the key.
-  // This means removing stream[0] doesn't invalidate stream[1]'s cell.
-  const existing = {};
-  grid.querySelectorAll('.stream-cell').forEach(el => { existing[el.dataset.key] = el; });
-  const newKeys = streams.map(s => `${s.platform}:${s.id}`);
+  // Key cells by platform+id only.
+  // CRITICAL: never move an existing cell — appendChild on a live node
+  // detaches and re-attaches it which resets the iframe and blows away volume.
+  // We only ever: remove stale cells, or append brand-new ones.
+  const existingKeys = new Set();
+  grid.querySelectorAll('.stream-cell').forEach(el => existingKeys.add(el.dataset.key));
+  const newKeys = new Set(streams.map(s => `${s.platform}:${s.id}`));
 
   // Remove cells no longer in streams
-  Object.keys(existing).forEach(k => { if (!newKeys.includes(k)) existing[k].remove(); });
+  grid.querySelectorAll('.stream-cell').forEach(el => {
+    if (!newKeys.has(el.dataset.key)) el.remove();
+  });
 
-  // Insert new cells / reorder existing ones — never rebuild a live cell
-  streams.forEach((s, i) => {
+  // Append only truly new cells — never touch existing ones
+  streams.forEach(s => {
     const key = `${s.platform}:${s.id}`;
-    if (existing[key]) {
-      // Cell already exists with its live iframe — just reorder, no iframe touched
-      grid.appendChild(existing[key]);
-    } else {
-      const faved = isFav(s.platform, s.id);
-      const cell = document.createElement('div');
-      cell.className = 'stream-cell';
-      cell.dataset.key = key;
-      cell.innerHTML = `
-        <iframe src="${getEmbedUrl(s.platform, s.id)}"
-          allowfullscreen allow="autoplay; fullscreen; picture-in-picture"
-          loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-        <div class="cell-overlay">
-          <div class="cell-controls">
-            <button class="cell-btn heart-btn ${faved ? 'faved' : ''}"
-              title="${faved ? 'Remove from favorites' : 'Add to favorites'}"
-            >${faved ? '♥' : '♡'}</button>
-            <button class="cell-btn close-btn" title="Close stream">✕</button>
-          </div>
-          <div class="cell-label">
-            <div class="pdot" style="width:6px;height:6px;border-radius:50%;background:${PCOLORS[s.platform]}"></div>
-            <span>${escH(s.label)}</span>
-          </div>
-        </div>`;
-      // Attach handlers via JS — use platform+id so index staleness is never an issue
-      cell.querySelector('.heart-btn').addEventListener('click', () => toggleFav(s.platform, s.id, s.label));
-      cell.querySelector('.close-btn').addEventListener('click', () => removeStreamByKey(s.platform, s.id));
-      grid.appendChild(cell);
-    }
+    if (existingKeys.has(key)) return; // already live in DOM, leave it alone completely
+
+    const faved = isFav(s.platform, s.id);
+    const cell = document.createElement('div');
+    cell.className = 'stream-cell';
+    cell.dataset.key = key;
+    cell.innerHTML = `
+      <div class="cell-bar">
+        <div class="bar-dot" style="background:${PCOLORS[s.platform]}"></div>
+        <span class="bar-name">${escH(s.label)}</span>
+        <button class="cell-btn heart-btn ${faved ? 'faved' : ''}"
+          title="${faved ? 'Remove from favorites' : 'Add to favorites'}"
+        >${faved ? '♥' : '♡'}</button>
+        <button class="cell-btn close-btn" title="Close stream">✕</button>
+      </div>
+      <iframe src="${getEmbedUrl(s.platform, s.id)}"
+        allowfullscreen allow="autoplay; fullscreen; picture-in-picture"
+        loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+    cell.querySelector('.heart-btn').addEventListener('click', () => toggleFav(s.platform, s.id, s.label));
+    cell.querySelector('.close-btn').addEventListener('click', () => removeStreamByKey(s.platform, s.id));
+    grid.appendChild(cell);
   });
 
   renderFavPanel();
