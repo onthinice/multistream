@@ -446,6 +446,7 @@ function getEmbedUrl(platform, id) {
     case 'twitch':
       return `https://player.twitch.tv/?channel=${encodeURIComponent(id)}&parent=${host}&autoplay=true`;
     case 'kick':
+      // Kick requires HTTPS host; no parent param needed, no referrerpolicy
       return `https://player.kick.com/${encodeURIComponent(id)}?autoplay=true`;
     case 'youtube': {
       let ytId = id.trim();
@@ -463,6 +464,18 @@ function getEmbedUrl(platform, id) {
       return `https://www.tiktok.com/live/embed?uniqueId=${encodeURIComponent(tt)}`;
     }
   }
+}
+
+// Per-platform iframe attributes — Kick needs scrolling=no and no referrerpolicy
+function getIframeAttrs(platform) {
+  const base = 'allowfullscreen allow="autoplay; fullscreen; picture-in-picture" loading="lazy"';
+  if (platform === 'kick') return base + ' scrolling="no"';
+  return base + ' referrerpolicy="no-referrer-when-downgrade"';
+}
+
+// Kick requires HTTPS — warn the user if they're on file:// or http://
+function kickNeedsHttps() {
+  return location.protocol !== 'https:' && location.hostname !== 'localhost';
 }
 
 // ══════════════════════════════════════════════
@@ -707,9 +720,14 @@ function render() {
         >${faved ? '♥' : '♡'}</button>
         <button class="cell-btn close-btn" title="Close stream">✕</button>
       </div>
-      <iframe src="${getEmbedUrl(s.platform, s.id)}"
-        allowfullscreen allow="autoplay; fullscreen; picture-in-picture"
-        loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+      <iframe src="${getEmbedUrl(s.platform, s.id)}" ${getIframeAttrs(s.platform)}></iframe>
+      ${s.platform === 'kick' && kickNeedsHttps() ? `
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+          justify-content:center;background:rgba(10,10,10,0.92);gap:8px;pointer-events:none;padding:16px;text-align:center">
+          <span style="font-size:20px">⚠️</span>
+          <span style="font-size:12px;font-weight:700;color:#f59e0b">Kick requires HTTPS</span>
+          <span style="font-size:11px;color:#777;line-height:1.5">Deploy to GitHub Pages or any HTTPS host — Kick will load there.</span>
+        </div>` : ''}`;
     cell.querySelector('.heart-btn').addEventListener('click', () => toggleFav(s.platform, s.id, s.label));
     cell.querySelector('.close-btn').addEventListener('click', () => removeStreamByKey(s.platform, s.id));
     grid.appendChild(cell);
